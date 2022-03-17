@@ -72,3 +72,34 @@ def cartesian_mask(shape, acc, sample_n=10):
     mask = mask.reshape(shape)
 
     return mask
+
+
+def undersample_cartesian_data(ad: pMR.AcquisitionData):
+
+    ky_index = ad.get_ISMRMRD_info('kspace_encode_step_1')
+    cph_index = ad.get_ISMRMRD_info('phase')
+    ky_num = int(np.max(ky_index)+1)
+    cph_num = int(np.max(cph_index)+1)
+    print(f'Nky {ky_num} - Ncph {cph_num}')
+
+    R = 4
+    F = int(ky_num/10)
+    msk = cartesian_mask([cph_num, ky_num, 1], R, sample_n=F)
+
+
+    acq_us = ad.new_acquisition_data(empty=True)
+
+    # Create raw data
+    for cnd in range(cph_num):
+        for ynd in range(ky_num):
+            if msk[cnd, ynd, 0] == 1:
+                cidx = np.where((ky_index == ynd) & (cph_index == cnd))[0]
+                if len(cidx) > 0:
+                    cacq = ad.acquisition(cidx)
+                    acq_us.append_acquisition(cacq)
+                else:
+                    print(f'ky {ynd} - cph {cnd} not found')
+
+    acq_us.sort()     
+
+    return acq_us
