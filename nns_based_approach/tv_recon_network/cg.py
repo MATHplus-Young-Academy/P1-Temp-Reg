@@ -3,6 +3,7 @@ from scipy.sparse.linalg import LinearOperator, cg
 from typing import Callable, Optional
 from torch import Tensor
 import numpy as np
+import time
 
 class CG(torch.autograd.Function):
     @staticmethod
@@ -34,10 +35,12 @@ class CG(torch.autograd.Function):
     def backward(ctx, grad_output):
         beta, xprime, z = ctx.saved_tensors
         b = grad_output.unsqueeze(0).numpy().ravel()
-        grad = torch.from_numpy(cg(ctx.H, b,tol=1e-3,x0=b)[0]).reshape(grad_output.shape)
+        old=time.time()
+        grad = torch.from_numpy(cg(ctx.H, b,tol=1e-3, x0=b)[0]).reshape(grad_output.shape)
+        print('backward cg',time.time()-old)
         gz = gbeta = None
         if ctx.needs_input_grad[0]:
             gz = beta * ctx.G(grad.unsqueeze(0))
         if ctx.needs_input_grad[2]:
             gbeta = (-ctx.GH(ctx.G(xprime.unsqueeze(0)) - z.unsqueeze(0)) * grad).sum().real
-        return gz, None, gbeta, None, None, None, None
+        return gz, None, gbeta, None, None, None, None, None
