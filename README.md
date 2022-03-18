@@ -10,5 +10,7 @@ Advanced regularised image reconstruction: https://github.com/SyneRBI/SIRF
 
 To simulate undersampled MR image reconstruction checkout https://github.com/MATHplus-Young-Academy/P2-Cardiac-Motion/blob/main/create_undersampled_data.ipynb
 
+Link for zoom session: https://zib-de.zoom.us/j/86477641776?pwd=N0dPR3BWeWc3NTg1K0FCRllkQnp5dz09
+
 
 
