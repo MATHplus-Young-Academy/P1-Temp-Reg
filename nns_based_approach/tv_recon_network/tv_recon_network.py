@@ -62,8 +62,8 @@ class LearnedTVMapCNN(nn.Module):
 
     def forward(self, y, acq_model):
         x_sirf = acq_model.adjoint(y)
-        x = torch.as_tensor(x.as_array())
-        x_device = x_torch.to(self.CNN_block.device)
+        x = torch.as_tensor(x_sirf.as_array())
+        x_device = x.to(self.CNN_block.device)
 
         # obtain Lambda as output of the CNN-block
         Lambda_map = self.CNN_block(x_device)  # has three channels (for x-,y- and t-dimension)
