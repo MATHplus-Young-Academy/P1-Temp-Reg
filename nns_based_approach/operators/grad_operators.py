@@ -75,12 +75,12 @@ class GradOperators(nn.Module):
     
     def __init__(self,dim=3):
         
-        super(GradOperators, self).__init__()
+        super().__init__()
         
         self.grad_kernel = create_grad_kernel(dim)
         
     def apply_G(self, x):
-        
+        x = torch.view_as_real(x).moveaxis(-1,1)
         #stack kernel to apply it to real and imag part
         grad_kernel = torch.cat(2*[self.grad_kernel],dim=0).to(x.device)
         
@@ -91,15 +91,15 @@ class GradOperators(nn.Module):
                 padding=1, #zeropadding cause already circularly padded
                 groups=2,
                 )
-        
         npad=1
         Gx = Gx[...,npad:-npad,npad:-npad,npad:-npad] #crop
-
+        Gx = Gx.reshape(Gx.shape[0],2,-1,*Gx.shape[2:]).moveaxis(1,-1).contiguous()
+        Gx = torch.view_as_complex(Gx)
         return Gx
     
     def apply_GH(self,z):
-        
-         #stack kernel to apply it to real and imag part
+        z = torch.view_as_real(z).moveaxis(-1,1).reshape(z.shape[0],-1,*z.shape[2:])
+       #stack kernel to apply it to real and imag part
         grad_kernel = torch.cat(2*[self.grad_kernel],dim=0).to(z.device)
         
         #circular padding
@@ -113,7 +113,8 @@ class GradOperators(nn.Module):
         
         npad=1
         GHz = GHz[...,npad:-npad,npad:-npad,npad:-npad]
-        
+        GHz = GHz.reshape(GHz.shape[0],2,-1,*GHz.shape[2:]).moveaxis(1,-1).contiguous()
+        GHz =  torch.view_as_complex(GHz)
         return GHz
     
     def apply_GHG(self, x):
