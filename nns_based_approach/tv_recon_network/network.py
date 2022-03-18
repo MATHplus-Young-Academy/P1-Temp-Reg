@@ -53,12 +53,12 @@ class LearnedTVMapCNN(nn.Module):
         z = self.apply_soft_threshold(Gx, threshold)
         return z
 
-    def solve_S1(self, acq_model, z, y):
+    def solve_S1(self, acq_model, z, y, x0=None):
         # sub-problem 1: solve (1) with respect to x, i.e. solve Hx=b, with
         # H = A^H A + beta*G^H G
         # b = A^H + beta*z
         old = time.time()
-        sol=CG.apply(z, acq_model, self.beta_reg, y, self.GOps.apply_G, self.GOps.apply_GH, self.GOps.apply_GHG)
+        sol=CG.apply(z, acq_model, self.beta_reg, y, self.GOps.apply_G, self.GOps.apply_GH, self.GOps.apply_GHG, x0)
         return sol
 
     def forward(self, y, acq_model):
@@ -79,6 +79,6 @@ class LearnedTVMapCNN(nn.Module):
 
             z = self.solve_S2(Lambda_map, x)
 
-            x = self.solve_S1(acq_model, z, y).unsqueeze(0)
+            x = self.solve_S1(acq_model, z, y, x).unsqueeze(0)
 
         return x, Lambda_map
