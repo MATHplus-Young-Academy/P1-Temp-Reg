@@ -35,14 +35,14 @@ class LearnedTVMapCNN(nn.Module):
 
         self.T = T
         self.CNN_block = CNN_block
-        self.GOps = GradOperators
+        self.GOps = GradOperators()
         self.beta_reg = torch.as_tensor(beta_reg)  # can be any real number (use torch.exp to make positive) #TODO: make Parameter
 
     @staticmethod
     def apply_soft_threshold(x, threshold):
         # the soft-thresholding can be expressed as
         # S_t(x) = ReLU(x-t) - ReLU(-x -t)
-        return F.relu(x - threshold) - F.relu(-x - threshold)
+        return torch.view_as_complex(F.relu(torch.view_as_real(x - threshold)) - F.relu(torch.view_as_real(-x - threshold)))
 
     def solve_S2(self, Lambda_map, x):
         # sub-problem 2: solve (1) with respect to z, for fixed x, i.e.
@@ -50,7 +50,7 @@ class LearnedTVMapCNN(nn.Module):
 
         threshold = Lambda_map / torch.exp(self.beta_reg)
         Gx = self.GOps.apply_G(x)  # obtain z by sof-thresholding Gx (component-wise)
-        z = self.apply_soft_threshold(self, Gx, threshold)
+        z = self.apply_soft_threshold(Gx, threshold)
         return z
 
     def solve_S1(self, acq_model, z, y):
@@ -58,13 +58,13 @@ class LearnedTVMapCNN(nn.Module):
         # H = A^H A + beta*G^H G
         # b = A^H + beta*z
 
-        return CG.apply(z, acq_model, self.beta, y, G=self.GOps.apply_G, GH=self.GOps.apply_GH, GHG=self.GOps.apply_GHG)
+        return CG.apply(z, acq_model, self.beta_reg, y, self.GOps.apply_G, self.GOps.apply_GH, self.GOps.apply_GHG)
 
     def forward(self, y, acq_model):
         x_sirf = acq_model.adjoint(y)
-        x = torch.as_tensor(x_sirf.as_array())
+        x = torch.as_tensor(x_sirf.as_array()).unsqueeze(0)
         device = next(self.CNN_block.parameters()).device
-        x_device = torch.view_as_real(x).moveaxis(-1,0).unsqueeze(0).to(device) #nbatch=1, nchannels=2 (real/imag), (t,height,width(
+        x_device = torch.view_as_real(x).moveaxis(-1,1).to(device) #nbatch=1, nchannels=2 (real/imag), (t,height,width(
 
         # obtain Lambda as output of the CNN-block
         Lambda_map = self.CNN_block(x_device)  # has three channels (for x-,y- and t-dimension)
@@ -72,6 +72,7 @@ class LearnedTVMapCNN(nn.Module):
         Lambda_map = Lambda_map.cpu()
 
         for kiter in range(self.T):
+            print(kiter)
             z = self.solve_S2(Lambda_map, x)
-            x = self.solve_S1(acq_model, z, y)
+            x = self.solve_S1(acq_model, z, y).unsqueeze(0)
         return x, Lambda_map
