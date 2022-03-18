@@ -19,7 +19,7 @@ class CG(torch.autograd.Function):
             dtype=np.complex64,
             matvec=lambda x: AHA(x)+(beta * GHG(torch.from_numpy(x).reshape(tmp.shape).unsqueeze(0))).numpy().ravel()
         )
-        sol = cg(H, b)
+        sol = cg(H, b,tol=1e-3)
         xprime = sol[0].reshape(tmp.shape)
         ctx.H = H
         ctx.G = G
@@ -31,10 +31,10 @@ class CG(torch.autograd.Function):
     @staticmethod
     def backward(ctx, grad_output):
         beta, xprime, z = ctx.saved_tensors
-        grad = torch.from_numpy(cg(ctx.H, grad_output.numpy().ravel())[0]).reshape(grad_output.shape)
+        grad = torch.from_numpy(cg(ctx.H, grad_output.unsqueeze(0).numpy().ravel(),tol=1e-3)[0]).reshape(grad_output.shape)
         gz = gbeta = None
         if ctx.needs_input_grad[0]:
-            gz = beta * ctx.G(grad)
+            gz = beta * ctx.G(grad.unsqueeze(0)).squeeze(0)
         if ctx.needs_input_grad[2]:
-            gbeta = (-ctx.GH(ctx.G(xprime) - z) * grad).sum().real
+            gbeta = (-ctx.GH(ctx.G(xprime.unsqueeze(0)) - z.unsqueeze(0)) * grad).sum().real
         return gz, None, gbeta, None, None, None
