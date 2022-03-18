@@ -9,7 +9,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 from ..operators.grad_operators import GradOperators
-from cg import CG
+from .cg import CG
 
 
 class LearnedTVMapCNN(nn.Module):
@@ -63,12 +63,12 @@ class LearnedTVMapCNN(nn.Module):
     def forward(self, y, acq_model):
         x_sirf = acq_model.adjoint(y)
         x = torch.as_tensor(x_sirf.as_array())
-        x_device = x.to(self.CNN_block.device)
+        device = next(self.CNN_block.parameters()).device
+        x_device = torch.view_as_real(x).moveaxis(-1,0).unsqueeze(0).to(device) #nbatch=1, nchannels=2 (real/imag), (t,height,width(
 
         # obtain Lambda as output of the CNN-block
         Lambda_map = self.CNN_block(x_device)  # has three channels (for x-,y- and t-dimension)
         Lambda_map = torch.exp(Lambda_map)
-        Lambda_map = torch.cat(2 * [lambda_reg], dim=1)  # will have six channels (for real and imaginary part)
         Lambda_map = Lambda_map.cpu()
 
         for kiter in range(self.T):
