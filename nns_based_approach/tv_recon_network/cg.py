@@ -34,7 +34,7 @@ class CG(torch.autograd.Function):
         grad = torch.from_numpy(cg(ctx.H, grad_output.unsqueeze(0).numpy().ravel(),tol=1e-3)[0]).reshape(grad_output.shape)
         gz = gbeta = None
         if ctx.needs_input_grad[0]:
-            gz = beta * ctx.G(grad.unsqueeze(0)).squeeze(0)
+            gz = beta * ctx.G(grad.unsqueeze(0))
         if ctx.needs_input_grad[2]:
             gbeta = (-ctx.GH(ctx.G(xprime.unsqueeze(0)) - z.unsqueeze(0)) * grad).sum().real
-        return gz, None, gbeta, None, None, None
+        return gz, None, gbeta, None, None, None, None
