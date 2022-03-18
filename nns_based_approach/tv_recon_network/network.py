@@ -3,12 +3,13 @@
 """
 
 """
-
+import sys
+sys.path.append("/home/jovyan/P1-Temp-Reg/nns_based_approach")
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-from ..operators.grad_operators import GradOperators
+from operators.grad_operators import GradOperators
 from .cg import CG
 
 
@@ -70,6 +71,8 @@ class LearnedTVMapCNN(nn.Module):
         Lambda_map = self.CNN_block(x_device)  # has three channels (for x-,y- and t-dimension)
         Lambda_map = torch.exp(Lambda_map)
         Lambda_map = Lambda_map.cpu()
+        
+        print(x)
 
         for kiter in range(self.T):
             z = self.solve_S2(Lambda_map, x)

@@ -1,6 +1,7 @@
 import os
 import nibabel as nib
 import sirf.Gadgetron as mr
+import torch
 from glob import glob
 from torch.utils.data import Dataset
 
@@ -27,6 +28,7 @@ class ImageDataset(Dataset):
         
         label_path = os.path.join(self.label_dir, f"img_{idx}.nii")
         label_data = nib.load(label_path)
+        label_tensor = torch.tensor(label_data.get_fdata()).unsqueeze(0)
         
         input_path = os.path.join(self.input_dir, f"y_{idx}.h5")
         input_data = mr.AcquisitionData(input_path)
@@ -38,4 +40,4 @@ class ImageDataset(Dataset):
         model = mr.AcquisitionModel(input_data, csm)
         model.set_coil_sensitivity_maps(csm)
             
-        return input_data, label_data, model
+        return input_data, label_tensor, model
