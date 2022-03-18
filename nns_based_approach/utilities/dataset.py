@@ -34,7 +34,7 @@ class ImageDataset(Dataset):
         
         label_path = os.path.join(self.label_dir, f"img_{idx}.nii")
         label_data = nib.load(label_path)
-        label_tensor = torch.tensor(label_data.get_fdata()).unsqueeze(0)
+        label_tensor = torch.tensor(label_data.get_fdata(), dtype=torch.float32).unsqueeze(0)
         
         input_path = os.path.join(self.input_dir, f"y_{idx}.h5")
         input_data = mr.AcquisitionData(input_path)

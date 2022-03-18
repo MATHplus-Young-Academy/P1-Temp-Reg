@@ -8,7 +8,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-from ..operators.grad_operators import GradOperators
+import sys
+sys.path.append("/home/jovyan/P1-Temp-Reg/nns_based_approach")
+from operators.grad_operators import GradOperators
 from .cg import CG
 import time
 
@@ -75,7 +77,7 @@ class LearnedTVMapCNN(nn.Module):
         Lambda_map = Lambda_map.cpu()
 
         for kiter in range(self.T):
-            print(kiter)
+            # print(kiter)
 
             z = self.solve_S2(Lambda_map, x)
 
