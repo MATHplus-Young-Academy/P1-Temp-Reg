@@ -1,21 +1,20 @@
 import torch
 from scipy.sparse.linalg import LinearOperator, cg
-from typing import Callable
+from typing import Callable, Optional
 from torch import Tensor
+
 
 class CG(torch.autograd.Function):
     @staticmethod
-    def forward(ctx, z: Tensor, AcquisitionModel, beta: Tensor, y, G:Callable, GHG:Callable) -> Tensor:
+    def forward(ctx, z: Tensor, AcquisitionModel, beta: Tensor, y, G: Callable, GH: Callable, GHG: Optional[Callable]=None) -> Tensor:
         tmp = AcquisitionModel.adjoint(y)
-        b = tmp.as_array().ravel() + (beta * G(z)).numpy().ravel()
+        if GHG is None: 
+            GHG = lambda x: GH(G(x))
+        b = tmp.as_array().ravel() + (beta * GH(z)).numpy().ravel()
 
         def AHA(x):
             tmp.fill(x)
-            return (
-                AcquisitionModel.adjoint(AcquisitionModel.direct(tmp))
-                .as_array()
-                .ravel()
-            )
+            return AcquisitionModel.adjoint(AcquisitionModel.direct(tmp)).as_array().ravel()
 
         H = LinearOperator(
             shape=(np.prod(b.shape), np.prod(b.shape)),
@@ -25,16 +24,18 @@ class CG(torch.autograd.Function):
         xprime = sol[0].reshape(tmp.shape)
         ctx.H = H
         ctx.G = G
+        ctx.GH = GH
         xprime_tensor = torch.from_numpy(xprime)
-        ctx.save_for_backward(beta, xprime_tensor)
+        ctx.save_for_backward(beta, xprime_tensor, z)
         return xprime_tensor
 
     @staticmethod
     def backward(ctx, grad_output):
-        beta, xprime = ctx.saved_tensors
-        grad = torch.from_numpy(cg(ctx.H, grad_output.numpy().ravel())[0]).reshape(
-            grad_output.shape
-        )
-        gz = beta * ctx.G(grad)
-        gbeta = None  # TODO
+        beta, xprime, z = ctx.saved_tensors
+        grad = torch.from_numpy(cg(ctx.H, grad_output.numpy().ravel())[0]).reshape(grad_output.shape)
+        gz = gbeta = None
+        if ctx.needs_input_grad[0]:
+            gz = beta * ctx.G(grad)
+        if ctx.needs_input_grad[2]:
+            gbeta = (-ctx.GH(ctx.G(xprime) - z) * grad).sum().real
         return gz, None, gbeta, None, None, None
