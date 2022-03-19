@@ -3,7 +3,7 @@ __version__ = '0.1.1'
 import numpy as np
 
 # import engine module
-import sirf.Gadgetron as mr
+import sirf.Gadgetron as pMR
 
 # import further modules
 import os
