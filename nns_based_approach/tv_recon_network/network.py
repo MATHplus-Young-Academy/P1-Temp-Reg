@@ -8,9 +8,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-from ..operators.grad_operators import GradOperators
+import sys
+sys.path.append("/home/jovyan/P1-Temp-Reg/nns_based_approach")
+from operators.grad_operators import GradOperators
 from .cg import CG
-
+import time
 
 class LearnedTVMapCNN(nn.Module):
 
@@ -29,7 +31,7 @@ class LearnedTVMapCNN(nn.Module):
         - T ... length of the network
     """
 
-    def __init__(self, CNN_block, T=8, beta_reg=10.0):
+    def __init__(self, CNN_block, T=8, beta_reg=1.0):
 
         super(LearnedTVMapCNN, self).__init__()
 
@@ -53,15 +55,18 @@ class LearnedTVMapCNN(nn.Module):
         z = self.apply_soft_threshold(Gx, threshold)
         return z
 
-    def solve_S1(self, acq_model, z, y):
+    def solve_S1(self, acq_model, z, y, x0=None):
         # sub-problem 1: solve (1) with respect to x, i.e. solve Hx=b, with
         # H = A^H A + beta*G^H G
         # b = A^H + beta*z
-
-        return CG.apply(z, acq_model, self.beta_reg, y, self.GOps.apply_G, self.GOps.apply_GH, self.GOps.apply_GHG)
+        old = time.time()
+        sol=CG.apply(z, acq_model, self.beta_reg, y, self.GOps.apply_G, self.GOps.apply_GH, self.GOps.apply_GHG, x0)
+        return sol
 
     def forward(self, y, acq_model):
+        old = time.time()
         x_sirf = acq_model.adjoint(y)
+
         x = torch.as_tensor(x_sirf.as_array()).unsqueeze(0)
         device = next(self.CNN_block.parameters()).device
         x_device = torch.view_as_real(x).moveaxis(-1,1).to(device) #nbatch=1, nchannels=2 (real/imag), (t,height,width(
@@ -72,7 +77,10 @@ class LearnedTVMapCNN(nn.Module):
         Lambda_map = Lambda_map.cpu()
 
         for kiter in range(self.T):
-            print(kiter)
+            # print(kiter)
+
             z = self.solve_S2(Lambda_map, x)
-            x = self.solve_S1(acq_model, z, y).unsqueeze(0)
+
+            x = self.solve_S1(acq_model, z, y, x).unsqueeze(0)
+
         return x, Lambda_map
