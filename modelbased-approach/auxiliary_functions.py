@@ -2,8 +2,6 @@ from sirf.Gadgetron import AcquisitionData, CoilSensitivityData, AcquisitionMode
 from sirf.Utilities import assert_validity
 
 import numpy as np
-
-
     
 def get_test_img():
 
